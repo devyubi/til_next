@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Next.js
 
-## Getting Started
+- git init
+- git remote add origin https://github.com/devyubi/til_next.git
 
-First, run the development server:
+## 1. Next.js 특징
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- React.js 를 더 편하게 사용할 수 있는 기능을 미리 제공함
+- 웹 개발 프레임워크. (프레임워크란? : 미리 기능을 만들어서 제공함)
+- React.js 는 그냥 js 라이브러리임
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 2. 라이브러리와 프레임워크의 차이점
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 기능의 구현의 주도권을 개발자가 가짐 : 라이브러리
+- 기능 구현의 주도권이 개발자에게 제한적임 : 프레임워크
+- 개발 주도권이 개발자에게 있는 것이 좋지 않음
+ - 쓰고 싶은 기능을 개발자가 선택하는 지유가 있음
+ - 개발의 결과물에 대해서 유지, 보수가 개발자에게 한정됨
+ - 대규모 프로젝트에서는 라이브러리 선택에 따라서 개발 진행 변경됨
+ - `컨벤션 (약속 or 규칙) 유지가 어려움` (팀원들이 코드 스타일이나 구조를 통일하기 어려움)
+- Next.js 즉 프레임워크는 자유도가 낮음
+ - 자유도가 낮은 대신 `거의 모든 기능을 기본적으로 제공`함
+ - 복잡한 기능을 기본적으로 제공해 주므로 많은 부분이 해결 되어져 있음
+ - React.js 에 추가적인 기능을 보완했으므로 상당히 이해하기 수월함
 
-## Learn More
+## 3. Next.js 의 사전 랜더링 (Pre Rendering)
 
-To learn more about Next.js, take a look at the following resources:
+- 면접볼 때 왜 Next.js 쓰는지 물어볼때 1순위로 추천 (사전렌더링/프리렌더링이 지원된다고 얘기함)
+- 사전 렌더링이란?
+ - 웹 브라우저의 요청에 Server 에서 미리 랜더링을 완료한 HTML 응답으로 제공함
+ - React.js 는 CSR (Client Side Rendering) 으로 렌더링, 즉 화면에 HTML 출력이 느림
+ - Next.js 는 사용자 요청이 들어오면 서버에서 컴포넌트들을 렌더링하고, 그 결과물을 응답해줌
+ - 리엑트에서는 lazy loading (필요할 때만 로드(불러오기) 하는 방식) 직접 다 해줘야하는데, next.js는 자동임
+ - SEO 에 최적화됨으로 인해서 검색 노출에 유리함
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3.1 Lazy Loading
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Lazy Loading은 `필요할 때만 불러오는 기술`이지, 렌더링 방식이 아니라 `리소스 로드 방식`임.
+- 예 : 화면 아래쪽 이미지 → 스크롤 내려갈 때만 로드 무거운 컴포넌트 → 실제로 클릭했을 때만 import 동적 라우트 페이지 → 사용자가 이동할 때만 불러옴.
+- 즉, CSR, SSR, SSG 어디서든 lazy loading을 적용할 수 있음
 
-## Deploy on Vercel
+## 4. CSR 에 대해서 상세하게 이해하기
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- js 로 HTML 을 즉시 생성하는 방식
+- React 의 기본적인 랜더링 방식 (Client Side Rendering)
+- 랜더링 단계
+ - 1단계 : 사용자 → 웹브라우저 요청 → 서버에서 `빈 껍데기 HTML` (HTML + JS 파일) 응답 → 웹브라우저 출력 (컴포넌트 렌더링, 데이터 요청(fetch)) → 화면 완성
+ - 2단계 : 다시 서버에서 js 압축파일 (JS Bundle) → 웹브라우저 응답
+ - 3단계 : 웹브라우저 JS Bundle 실행 → 웹브라우저 HTML 출력 → 사용자
+- 장점
+ - 페이지 이동이 빠름 (초기 접속 후 라우터 이동이 상당히 빠름)
+ - 서버에서 응답하는 JS Bundle 에 모든 기능 관련 코드를 내려 받았음
+- 단점
+ - `치명적으로 초기 렌더링이 느리다`는 단점이 있음.
+ - 접속 이후에 첫 화면을 렌더링 할 때까지 시간이 많이 걸림 (`FCP(First Contentful Paint) 가 느림`)
+ - FCP(First Contentful Paint) : 사용자가 처음으로 화면에서 콘텐츠(텍스트, 이미지 등) 를 볼 수 있게 되는 시점 (요청 후 첫 렌더링 되는 시간)
+ - FCP 가 10초 이상이면 이탈율이 150% 이상임.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4.1 FCP(First Contentful Paint) 시간 줄이는 방법 : 최적화
+
+- 1. 사전 렌더링 (Pre-rendering) 적극 활용
+- 2. 이미지 최적화 (next/image 사용)
+- 3. JS 번들 크기 줄이기 (Code Splitting / Dynamic Import)
+- 4. 폰트 최적화 (next/font 사용)
+- 5. 불필요한 JS / CSS 제거 (Tree Shaking + 최소화)
+
+## 5. SSR 에 대한 이해
+
+- Server Side Rendering 의 줄임말
+- Next.js 의 특징으로 CSR 의 단점을 보완함
+- 랜더링 단계
+ - 사용자 → 웹브라우저 요청 → 서버에서 JS Bundle 을 실행 → HTML 생성 → 웹브라우저 응답
+- SSR 에서의 실제 랜더링은 2단계를 거침
+ - 1단계 : HTML 을 서버에서 JS Bundle을 이용해서 HTML 생성 → 웹브라우저 랜더링
+ - 2단계 : 하이드레이션 (Hydration)을 통해서 JS 의 상호작용 기능을 적용함
+
+### 5.1 하이드레이션 (Hydration)
+- 서버가 먼저 완성된 HTML을 만들어서 브라우저에 보내면, 그 HTML은 **그냥 보기용(정적)**임.
+- 아직 이벤트(클릭, 입력, 상태변화) 같은 건 안 먹히는 단계.
+- 그래서 브라우저가 받은 뒤, React(JS)가 그 HTML 위에 `JS 기능을 다시 입히는 과정`
+
+## 6. TTF (Time to Interactive)
+
+- FCP 진행 이후에 사용자 상호작용 가능한 시점을 말함
+- 이 상호작용 가능한 시점을 TTI 라고 함
+
+## 7. 결론
+
+- 위의 내용은 면접에서 물어볼 수 있으며, Next.js 의 이해를 위한 상식
+- React App 의 단점인 FCP 를 개선하고 React App 의 빠른 페이지 이동 활용
