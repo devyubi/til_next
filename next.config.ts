@@ -4,6 +4,16 @@ const nextConfig = {
     domains: ["example.com", "cdn.myapp.com"], // 외부 이미지 허용 도메인
     formats: ["image/avif", "image/webp"], // 고효율 포맷 사용
     minimumCacheTTL: 60, // 캐시 유지 시간(초)
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "fakestoreapi.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
   },
 
   // 압축 및 빌드 최적화
