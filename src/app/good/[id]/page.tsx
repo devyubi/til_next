@@ -19,7 +19,13 @@ interface PageProps {
 
 async function Page({ params }: PageProps) {
   const { id } = await params;
-  const { category, description, image, rating, title } = mockData;
+  // fetch 를 이용한 자료 출력
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products/${id}`
+  );
+  const good: GoodDataType = await response.json();
+
+  const { category, description, image, rating, title } = good;
   return (
     <div className={styles.container}>
       <div className={styles.title}>{title}</div>

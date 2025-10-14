@@ -1,20 +1,30 @@
 "use client";
 import styles from "@/components/SearchBar.module.css";
-import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
 
 const SearchBar = () => {
+  // 동적 라우팅
+  const router = useRouter(); // 상단 import 를 `next/navigation` 으로.
+
+  const searchParams = useSearchParams();
+
+  const q = searchParams.get("keyword");
+  useEffect(() => {
+    setSearch(q || ""); // q = query(쿼리)
+  }, [q]);
+
   const [search, setSearch] = useState("");
   const onChangeSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
   };
-  // 동적 라우팅
-  const router = useRouter(); // next/navigation
+
   const handleSearch = () => {
-    if (!search.trim()) {
+    // 같은 검색어를 다시 검색할 필요는 없음
+    if (!search.trim() || q === search) {
       return;
     }
-    router.push(`/search?keyword=${search}`);
+    router.push(`/search?keyword=jewelery`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

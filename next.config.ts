@@ -15,7 +15,12 @@ const nextConfig = {
       },
     ],
   },
-
+  // 캐싱 상태 콘솔 출력
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   // 압축 및 빌드 최적화
 
   //  compress: true, // gzip 압축 활성화
