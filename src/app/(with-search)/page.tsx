@@ -15,7 +15,7 @@ async function AllGoods() {
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/products?limit=10`,
     {
-      next: { revalidate: 3600 },
+      cache: "force-cache",
     }
   );
   const allGoods: GoodDataType[] = await response.json();
@@ -33,7 +33,10 @@ async function AllGoods() {
 async function RecommendGoods() {
   // 위와 같이 js 의 내장 fetch 가 아니고, Next.js 의 내장 fetch 임
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=3`
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=3`,
+    {
+      cache: "force-cache",
+    }
   );
   const allGoods: GoodDataType[] = await response.json();
   // console.log(allGoods);
