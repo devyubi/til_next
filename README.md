@@ -1,125 +1,524 @@
-# Route Cache
+# Loading
 
-- Next 서버에서 빌드 타임에 특정 페이지의 렌더링 결과를 캐싱하는 기능
-- Next 에 Page 종류는 Static Page (정적 페이지 - 빠름) 와 Dynamic Page (동적 페이지 - Static Page 보다 느림) 가 있음
-- 만들어둔건 정적 페이지 / 실시간으로 만들어지는건 동적 페이지
+- 라우터에 의한 page 출력 시 시간이 오래 걸리는 경우가 존재함
+- Dynamic Page 는 데이터 연동이라서 로딩이 걸림
+- 비동기 페이지에서는 로딩이 걸림
+- Next.js 에서는 page 에 로딩을 처리하는 loading.tsx 가 존재함
 
-## 2. build 시 Dynamic Page 로 설정되는 기준
+## 1. 주의 사항
 
-- Dynamic Page 로 빌드 되는 경우의 기준
-- 특정 페이지가 접속 요청을 받을 때 마다 변화가 생기는 경우
-- 특정 페이지가 접속 요청을 받을 때 마다 데이터가 달라지는 경우
-  - 캐시되지 않은 Data Fetching 을 사용 할 경우
-  - 동적 함수(쿠키, 헤더, 쿼리스트링 등)을 사용한 컴포넌트가 있을 때
+- page 에만 적용됨
+- component 에 적용되는 것은 아님. (컴포넌트에만 적용시킬 경우, 별도로 작성 필요함 : React 의 Suspense 를 활용)
+- loading.tsx 라고 파일명 정해져 있음.
+- Next.js 는 파일 컨벤션에서 소문자를 기준으로 함
 
-## 3. build 시 Static Page 로 설정되는 기준
+## 2. 적용해보기
 
-- Static Page 로 빌드 되는 경우의 기준
-- Dynamic Page 가 아니라면 모두 Static Page 로 설정 됨
-
-## 4. 빌드 오류 해결하기
-
-```bash
-npm run build
-```
-
-### 4.1. useSearchParams() 문제 해결
-
-- `사용자가 어떤 데이터를 입력 할지 알 수 없는 경우`
-- <Suspense></Suspense> 로 감싸줌.
-- /src/app/(with-search)/layout.tsx
+- Dynamic page 가 아니라면 loading.tsx 작동 안됨
+- /src/app/(with-search)/search/page.tsx
+- /src/app/(with-search)/search/loading.tsx 파일 생성
 
 ```tsx
-import SearchBar from "@/components/SearchBar";
-import { Suspense } from "react";
-
-interface LayoutProps {
-  children: React.ReactNode;
+function Loading() {
+  return <div>Loading...</div>;
 }
 
-function Layout({ children }: LayoutProps) {
+export default Loading;
+```
+
+## 3. 의도적으로 Loading 페이지에 Delay 를 시킴
+
+- 추후 딜레이 제거 (수업 내용을 위해 의도적으로 딜레이 시킴)
+- /src/util 폴더 생성
+- /src/util/delay.ts 파일 생성
+
+```ts
+export async function delay(ms: number) {
+  await new Promise((resolve) => {
+    setTimeout(() => {
+      resolve("");
+    }, ms);
+  });
+}
+```
+
+## 4. Delay 적용하기
+
+- /src/app/(with-search)/search/page.tsx
+- 적용 코드
+
+```tsx
+// 일부러 시간을 지연시킴
+await delay(1500);
+```
+
+- 최종 적용된 코드
+
+```tsx
+import styles from "@/app/(with-search)/search/page.module.css";
+import GoodItem from "@/components/GoodItem";
+import { GoodDataType } from "@/types/type";
+import { delay } from "@/util/delay";
+
+interface PageProps {
+  searchParams: Promise<{ keyword: string }>;
+}
+
+async function Page({ searchParams }: PageProps) {
+  const { keyword } = await searchParams;
+
+  // 일부러 시간을 지연시킴
+  await delay(1500);
+
+  // fetch 를 활용한 검색
+  // js 내장 fetch 아님!! Next.js fetch 임!!
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products/category/${keyword}`
+  );
+
+  const allGoods: GoodDataType[] = await response.json();
+
   return (
-    <div>
-      <Suspense fallback={<div>Loading...</div>}>
-        <SearchBar />
-      </Suspense>
-      <div>{children}</div>
+    <div className={styles.container}>
+      <h4>
+        <strong>{keyword}</strong> : 검색 페이지
+      </h4>
+      <div>
+        <div>
+          {allGoods.map((item) => (
+            <GoodItem key={item.id} {...item} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default Layout;
+export default Page;
 ```
 
-- 다시 npm run build 하여, 아래 처럼 떴다.
-- ○ : static Page / ƒ : dynamic page
+## 5. 주의 사항
 
-```bash
-Route (app)                                 Size  First Load JS  Revalidate  Expire
+### 5.1. UX 적으로 문제가 될 수도 있음
 
-Route (app)                                 Size  First Load JS  Revalidate  Expire
-Route (app)                                 Size  First Load JS  Revalidate  Expire
-┌ ○ /                                      296 B         111 kB          1h      1y
-┌ ○ /                                      296 B         111 kB          1h      1y
-├ ○ /_not-found                            138 B         102 kB
-├ ○ /good                                  138 B         102 kB
-├ ○ /_not-found                            138 B         102 kB
-├ ○ /good                                  138 B         102 kB
-├ ○ /good                                  138 B         102 kB
-├ ƒ /good/[id]                             295 B         108 kB
-└ ƒ /search                                297 B         111 kB
-+ First Load JS shared by all             102 kB
-  ├ chunks/255-4efeec91c7871d79.js       45.7 kB
-  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
-  └ other shared chunks (total)          2.02 kB
+- http://localhost:3000/search?keyword=jewelery
 
+### 5.2. 하위페이지에서도 적용됨
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-```
+- layout.tsx 처럼 하위의 라우터 페이지에 모두 출력이 됨
+- 모두 동일한 loading.tsx 를 보여주는 어색함
 
-## 5. Static 페이지로 구성 해보기
+### 5.3 async 가 반드시 존재해야 작동됨
 
-- /src/app/good/page.tsx 업데이트
-- 아래 함수를 이용하면 SSR 페이지를 미리 생성해줌 (build 시 페이지 새로 생성함)
+- page 가 비동기로서 async 가 적용되어야 작동함
 
-- SSR이란? (서버사이드 렌더링) : 페이지를 브라우저가 아니라 서버에서 미리 완성해서 보내주는 방식
+### 5.4 컴포넌트에는 적용안됨
 
-  - 보통 React 앱은 이렇게 동작함
-  - 클라이언트(브라우저)가 서버에 요청 → 서버는 빈 HTML을 보내고, 브라우저가 JS를 다운로드해서 렌더링을 `직접` 함.
-  - 이게 CSR(Client Side Rendering) 임.
+- React의 Suspense 활용을 권장함
 
-- 하지만 SSR은 다름
+## 6. 컴포넌트에 Suspense 활용하기
 
-  - 서버가 요청을 받으면 이미 완성된 HTML을 만들어서 보냄
-  - 브라우저는 바로 그려버림 (JS는 나중에 붙음)
-  - 즉, `브라우저 대신 서버가 먼저 페이지를 렌더링한다` → 초기 로딩이 빠르고, SEO(검색엔진 노출)에 유리함
+- loading.tsx 제거
 
-- SSG : Static Site Generation
+### 6.1. Suspense 적용하기
 
 ```tsx
-/**
- * 약속 된 Next 함수임 (미리 페이지를 Static Page(정적-SSG) 이고, SSR(서버사이드렌더링) Page 이다.)
- */
-export function generateStaticParams() {
-  return [{ id: "1" }, { id: "2" }, { id: "3" }];
+import styles from "@/app/(with-search)/search/page.module.css";
+import GoodItem from "@/components/GoodItem";
+import { GoodDataType } from "@/types/type";
+import { delay } from "@/util/delay";
+import { Suspense } from "react";
+
+// 실제로는 외부 컴포넌트로 추출하기를 권장 : components 폴더 / SearchResult.tsx
+// 리액트 suspense 로 세밀하게 로딩 처리하기
+interface SerchResultProps {
+  keyword: string;
+}
+async function SearchResult({ keyword }: SerchResultProps) {
+  // 일부러 시간을 지연시킴
+  await delay(1500);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products/category/${keyword}`
+  );
+  const allGoods: GoodDataType[] = await response.json();
+
+  return (
+    <div className={styles.container}>
+      <h4>
+        <strong>{keyword}</strong> : 검색페이지
+      </h4>
+      <div>
+        {allGoods.map((item) => (
+          <GoodItem key={item.id} {...item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface PageProps {
+  searchParams: Promise<{ keyword: string }>;
+}
+
+async function Page({ searchParams }: PageProps) {
+  const { keyword } = await searchParams;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchResult keyword={keyword} />;
+    </Suspense>
+  );
+}
+
+export default Page;
+```
+
+## 7. 스켈레톤 적용하기
+
+- 최적화 중 Shift Layout 현상 제거
+- 최적화 중 스켈레톤을 통해서 사용자를 조금 더 기다리게 유도
+
+### 7.1. 메인페이지에 적용해 보기
+
+- /src/app/(with-search)/page.tsx 에 적용해보기
+
+```tsx
+// module.css 가 기본임 (시작페이지)
+import styles from "@/app/(with-search)/page.module.css";
+import GoodItem from "@/components/GoodItem";
+import { GoodDataType } from "@/types/type";
+import { delay } from "@/util/delay";
+import { Suspense } from "react";
+
+// Dynamic Page 로 강제로 설정 (권장하지 않음, 수업이라서)
+export const dynamic = "force-dynamic";
+
+// 1. 전체 제품 목록 가져오기
+async function AllGoods() {
+  // 수업을 위해서 강제로 delay 시킴
+  await delay(1500);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=10`,
+    {
+      next: { revalidate: 3600 },
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+// 2. 추천 상품 목록
+async function RecommendGoods() {
+  // 위와 같이 js 의 내장 fetch 가 아니고, Next.js 의 내장 fetch 임
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=3`,
+    {
+      cache: "force-cache",
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+function Home() {
+  return (
+    <div className={styles.container}>
+      <section>
+        <h3>지금 추천하는 상품</h3>
+        <Suspense fallback={<div>Loading...</div>}>
+          <RecommendGoods />
+        </Suspense>
+      </section>
+      <section>
+        <h3>전체 상품</h3>
+        <Suspense fallback={<div>Loading...</div>}>
+          <AllGoods />
+        </Suspense>
+      </section>
+    </div>
+  );
+}
+
+export default Home;
+```
+
+### 7.2 메인페이지에 스켈레톤 적용해보기
+
+- 스켈레톤 : 뼈대 (컴포넌트로 생성하기)
+- /src/components/skeleton 폴더 생성
+- /src/components/skeleton/gooditemskeleton.tsx 파일 생성
+
+```tsx
+import styles from "@/components/skeleton/GoodItemSkeleton.module.css";
+const GoodItemSkeleton = () => {
+  return (
+    <div className={styles.container}>
+      <div className={styles.image}></div>
+      <div className={styles.box}>
+        <div className={styles.title}></div>
+        <div className={styles.category}></div>
+        <br />
+        <div className={styles.rating}></div>
+      </div>
+    </div>
+  );
+};
+
+export default GoodItemSkeleton;
+```
+
+- /src/components/skeleton/gooditemskeleton.module.css 파일 생성
+
+```css
+.container {
+  display: flex;
+  gap: 15px;
+  padding: 20px 10px;
+  border-bottom: 1px solid rgb(220, 220, 220);
+  color: #000;
+  text-decoration: none;
+
+  height: 155px;
+}
+.image {
+  width: 80px;
+  height: 115px;
+  background-color: rgb(220, 220, 220);
+}
+.box {
+  flex: 1;
+}
+.title {
+  width: 50%;
+  height: 25px;
+  background-color: rgb(220, 220, 220);
+  margin-bottom: 10px;
+}
+.category {
+  width: 20%;
+  height: 20px;
+  background-color: rgb(220, 220, 220);
+}
+.rating {
+  height: 21px;
+  background-color: rgb(220, 220, 220);
 }
 ```
 
-## 6. Router Page 는 Static 으로 만들 수 있으면 만들어주자.
-
-- 동적 함수가 없고, Data cache 를 적용하면, Static Page 로 build 됨.
-- 동적 함수가 있으면, Dynamic 으로 build 됨.
-- Data cache 가 없으면, Dynamic 으로 build 됨.
-- 동적 함수가 없고, cache 가 없으면 Dynamic 으로 빌드 됨.
-
-## 7. 강제로 페이지의 유형을 설정하는 옵션
-
-- 권장하지는 않음
+- 실제로 적용해 보기
+- /src/app/(with-search)/page.tsx 에 적용해보기
 
 ```tsx
-export const dynamic = "auto"; // 기본값, 아무것도 강제하지 않음
-export const dynamic = "force-dynamic"; // 강제로 Dynamic 페이지로 설정
-export const dynamic = "force-static"; // 강제로 Static 페이지로 설정
-export const dynamic = "error"; // 강제로 Static 페이지로 설정하고, build 오류 발생 시킴.
+// module.css 가 기본임 (시작페이지)
+import styles from "@/app/(with-search)/page.module.css";
+import GoodItem from "@/components/GoodItem";
+import GoodItemSkeleton from "@/components/skeleton/gooditemskeleton";
+import { GoodDataType } from "@/types/type";
+import { delay } from "@/util/delay";
+import { Suspense } from "react";
+
+// Dynamic Page 로 강제로 설정 (권장하지 않음, 수업이라서)
+export const dynamic = "force-dynamic";
+
+// 1. 전체 제품 목록 가져오기
+async function AllGoods() {
+  // 수업을 위해서 강제로 delay 시킴
+  await delay(1500);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=10`,
+    {
+      next: { revalidate: 3600 },
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+// 2. 추천 상품 목록
+async function RecommendGoods() {
+  // 위와 같이 js 의 내장 fetch 가 아니고, Next.js 의 내장 fetch 임
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=3`,
+    {
+      cache: "force-cache",
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+function Home() {
+  return (
+    <div className={styles.container}>
+      <section>
+        <h3>지금 추천하는 상품</h3>
+        <Suspense
+          fallback={
+            <>
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+            </>
+          }
+        >
+          <RecommendGoods />
+        </Suspense>
+      </section>
+      <section>
+        <h3>전체 상품</h3>
+        <Suspense
+          fallback={
+            <>
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+              <GoodItemSkeleton />
+            </>
+          }
+        >
+          <AllGoods />
+        </Suspense>
+      </section>
+    </div>
+  );
+}
+
+export default Home;
 ```
+
+### 7.3 스켈레톤 리스트 업데이트 해보기
+
+- /src/components/skeleton/gooditemlistskeleton.tsx
+
+```tsx
+import GoodItemSkeleton from "./gooditemskeleton";
+
+interface GoodItemListSkeletonProps {
+  count: number;
+}
+
+const GoodItemListSkeleton = ({ count }: GoodItemListSkeletonProps) => {
+  return new Array(count)
+    .fill(0)
+    .map((_, index) => <GoodItemSkeleton key={index} />);
+};
+
+export default GoodItemListSkeleton;
+```
+
+- /src/app/(with-search)/page.tsx 에 적용
+
+```tsx
+// module.css 가 기본임 (시작페이지)
+import styles from "@/app/(with-search)/page.module.css";
+import GoodItem from "@/components/GoodItem";
+import GoodItemListSkeleton from "@/components/skeleton/gooditemlistskeleton";
+import GoodItemSkeleton from "@/components/skeleton/gooditemskeleton";
+import { GoodDataType } from "@/types/type";
+import { delay } from "@/util/delay";
+import { Suspense } from "react";
+
+// Dynamic Page 로 강제로 설정 (권장하지 않음, 수업이라서)
+export const dynamic = "force-dynamic";
+
+// 1. 전체 제품 목록 가져오기
+async function AllGoods() {
+  // 수업을 위해서 강제로 delay 시킴
+  await delay(1500);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=10`,
+    {
+      next: { revalidate: 3600 },
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+// 2. 추천 상품 목록
+async function RecommendGoods() {
+  // 위와 같이 js 의 내장 fetch 가 아니고, Next.js 의 내장 fetch 임
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/products?limit=3`,
+    {
+      cache: "force-cache",
+    }
+  );
+  const allGoods: GoodDataType[] = await response.json();
+  // console.log(allGoods);
+  return (
+    <div>
+      {allGoods.map((item) => (
+        <GoodItem key={item.id} {...item} />
+      ))}
+    </div>
+  );
+}
+
+function Home() {
+  return (
+    <div className={styles.container}>
+      <section>
+        <h3>지금 추천하는 상품</h3>
+        <Suspense fallback={<GoodItemListSkeleton count={3} />}>
+          <RecommendGoods />
+        </Suspense>
+      </section>
+      <section>
+        <h3>전체 상품</h3>
+        <Suspense fallback={<GoodItemListSkeleton count={5} />}>
+          <AllGoods />
+        </Suspense>
+      </section>
+    </div>
+  );
+}
+
+export default Home;
+```
+
+## 8. 라이브러리
+
+- 스켈레톤 라이브러리
+  - https://github.com/dvtng/react-loading-skeleton#readme
+- 리엑트 스피너 라이브러리
+  - https://www.davidhu.io/react-spinners/
