@@ -1,5 +1,5 @@
-import { GoodDataType } from "@/types/type";
 import styles from "@/components/gooditem.module.css";
+import { GoodDataType } from "@/types/type";
 import Image from "next/image";
 import Link from "next/link";
 
